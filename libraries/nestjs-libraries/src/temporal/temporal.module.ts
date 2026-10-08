@@ -43,11 +43,16 @@ export const getTemporalModule = (
               { identifier: 'main', maxConcurrentJob: undefined },
               ...socialIntegrationList,
             ]
-              .filter((f) => f.identifier.indexOf('-') === -1)
               .map((integration) => ({
                 integration,
                 taskQueue: integration.identifier.split('-')[0],
               }))
+              // one Worker per queue: variants like `tiktok-business` share
+              // the queue of their family
+              .filter(
+                ({ taskQueue }, index, list) =>
+                  list.findIndex((l) => l.taskQueue === taskQueue) === index
+              )
               .filter(({ taskQueue }) => !excludeQueues.includes(taskQueue))
               .map(({ integration, taskQueue }) => {
                 // Split the per-provider cap across the servers sharing this
