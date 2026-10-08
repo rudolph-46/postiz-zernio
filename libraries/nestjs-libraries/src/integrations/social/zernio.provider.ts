@@ -1,4 +1,6 @@
+import dayjs from 'dayjs';
 import {
+  AnalyticsData,
   AuthTokenDetails,
   PostDetails,
   PostResponse,
@@ -151,6 +153,59 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
+  // `id` is the Zernio account id (also stored as access token)
+  async analytics(
+    id: string,
+    accessToken: string,
+    date: number
+  ): Promise<AnalyticsData[]> {
+    const fromDate = dayjs().subtract(date, 'day').format('YYYY-MM-DD');
+    const toDate = dayjs().format('YYYY-MM-DD');
+
+    const [followers, posts] = await Promise.all([
+      this.fetch(
+        `${ZERNIO_API}/accounts/follower-stats?accountIds=${id}&fromDate=${fromDate}&toDate=${toDate}`,
+        { headers: this.headers() }
+      ).then((r) => r.json()),
+      this.fetch(
+        `${ZERNIO_API}/analytics?accountId=${id}&fromDate=${fromDate}&toDate=${toDate}&limit=100`,
+        { headers: this.headers() }
+      ).then((r) => r.json()),
+    ]);
+
+    const perDay = (metric: string) => {
+      const days: Record<string, number> = {};
+      for (const post of posts?.posts || []) {
+        const day = dayjs(post.publishedAt || post.scheduledFor).format(
+          'YYYY-MM-DD'
+        );
+        days[day] = (days[day] || 0) + Number(post.analytics?.[metric] || 0);
+      }
+      return Object.entries(days).map(([day, total]) => ({
+        total: String(total),
+        date: day,
+      }));
+    };
+
+    return [
+      {
+        label: 'Followers',
+        percentageChange: 0,
+        data: (followers?.stats?.[id] || []).map((point: any) => ({
+          total: String(point.followers ?? point.count ?? 0),
+          date: dayjs(point.date).format('YYYY-MM-DD'),
+        })),
+      },
+      ...['impressions', 'reach', 'likes', 'comments', 'shares'].map(
+        (metric) => ({
+          label: metric.charAt(0).toUpperCase() + metric.slice(1),
+          percentageChange: 0,
+          data: perDay(metric),
+        })
+      ),
+    ];
+  }
+
   async post(
     id: string,
     accessToken: string,
@@ -211,14 +266,24 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
 
 // Platforms connectable through Zernio's hosted OAuth flow
 export const zernioProviders = [
-  new ZernioProvider('instagram', 'zernio-instagram', 'Instagram (Zernio)', 2200),
+  new ZernioProvider(
+    'instagram',
+    'zernio-instagram',
+    'Instagram (Zernio)',
+    2200
+  ),
   new ZernioProvider('facebook', 'zernio-facebook', 'Facebook (Zernio)', 63206),
   new ZernioProvider('tiktok', 'zernio-tiktok', 'TikTok (Zernio)', 2200),
   new ZernioProvider('twitter', 'zernio-x', 'X (Zernio)', 280),
   new ZernioProvider('linkedin', 'zernio-linkedin', 'LinkedIn (Zernio)', 3000),
   new ZernioProvider('youtube', 'zernio-youtube', 'YouTube (Zernio)', 5000),
   new ZernioProvider('threads', 'zernio-threads', 'Threads (Zernio)', 500),
-  new ZernioProvider('pinterest', 'zernio-pinterest', 'Pinterest (Zernio)', 500),
+  new ZernioProvider(
+    'pinterest',
+    'zernio-pinterest',
+    'Pinterest (Zernio)',
+    500
+  ),
   new ZernioProvider('reddit', 'zernio-reddit', 'Reddit (Zernio)', 40000),
   new ZernioProvider(
     'googlebusiness',

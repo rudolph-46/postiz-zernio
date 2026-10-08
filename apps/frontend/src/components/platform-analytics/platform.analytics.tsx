@@ -30,6 +30,10 @@ const allowedIntegrations = [
   'threads',
   'x',
 ];
+// channels connected through Zernio expose the same analytics
+const supportsAnalytics = (identifier: string) =>
+  allowedIntegrations.includes(identifier) || identifier.startsWith('zernio-');
+
 export const PlatformAnalytics = () => {
   const fetch = useFetch();
   const t = useT();
@@ -50,7 +54,7 @@ export const PlatformAnalytics = () => {
       }
       return true;
     });
-    return int.filter((f: any) => allowedIntegrations.includes(f.identifier));
+    return int.filter((f: any) => supportsAnalytics(f.identifier));
   }, []);
   const { data, isLoading } = useSWR('analytics-list', load, {
     revalidateOnFocus: false,
@@ -76,41 +80,13 @@ export const PlatformAnalytics = () => {
       return [];
     }
     const arr = [];
-    if (
-      [
-        'facebook',
-        'instagram',
-        'instagram-standalone',
-        'linkedin-page',
-        'pinterest',
-        'youtube',
-        'threads',
-        'gmb',
-        'x',
-        'tiktok',
-        'tiktok-business',
-      ].indexOf(currentIntegration.identifier) !== -1
-    ) {
+    if (supportsAnalytics(currentIntegration.identifier)) {
       arr.push({
         key: 7,
         value: t('7_days', '7 Days'),
       });
     }
-    if (
-      [
-        'facebook',
-        'instagram',
-        'instagram-standalone',
-        'linkedin-page',
-        'pinterest',
-        'youtube',
-        'threads',
-        'gmb',
-        'x',
-        'tiktok',
-        'tiktok-business',
-      ].indexOf(currentIntegration.identifier) !== -1
-    ) {
+    if (supportsAnalytics(currentIntegration.identifier)) {
       arr.push({
         key: 30,
         value: t('30_days', '30 Days'),
