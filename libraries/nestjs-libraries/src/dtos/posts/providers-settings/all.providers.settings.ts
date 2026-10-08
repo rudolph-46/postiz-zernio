@@ -57,6 +57,16 @@ export type AllProvidersSettings =
   | ProviderExtension<'bluesky', None>
   | ProviderExtension<'telegram', None>
   | ProviderExtension<'nostr', None>
+  | ProviderExtension<'zernio-instagram', None>
+  | ProviderExtension<'zernio-facebook', None>
+  | ProviderExtension<'zernio-tiktok', None>
+  | ProviderExtension<'zernio-x', None>
+  | ProviderExtension<'zernio-linkedin', None>
+  | ProviderExtension<'zernio-youtube', None>
+  | ProviderExtension<'zernio-threads', None>
+  | ProviderExtension<'zernio-pinterest', None>
+  | ProviderExtension<'zernio-reddit', None>
+  | ProviderExtension<'zernio-gmb', None>
   | ProviderExtension<'moltbook', MoltbookDto>
   | ProviderExtension<'vk', None>
   | ProviderExtension<'skool', SkoolDto>
@@ -103,6 +113,16 @@ export const allProviders = (setEmpty?: any) => {
     { value: WhopDto, name: 'whop' },
     { value: MeweDto, name: 'mewe' },
     { value: TumblrDto, name: 'tumblr' },
+    { value: setEmpty, name: 'zernio-instagram' },
+    { value: setEmpty, name: 'zernio-facebook' },
+    { value: setEmpty, name: 'zernio-tiktok' },
+    { value: setEmpty, name: 'zernio-x' },
+    { value: setEmpty, name: 'zernio-linkedin' },
+    { value: setEmpty, name: 'zernio-youtube' },
+    { value: setEmpty, name: 'zernio-threads' },
+    { value: setEmpty, name: 'zernio-pinterest' },
+    { value: setEmpty, name: 'zernio-reddit' },
+    { value: setEmpty, name: 'zernio-gmb' },
   ].filter((f) => f.value);
 };
 
