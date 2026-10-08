@@ -16,14 +16,20 @@ const ZERNIO_API = 'https://zernio.com/api/v1';
 // Zernio owns the OAuth apps (Meta, TikTok, Google...), so a channel connected
 // through it has no token of its own: the "access token" stored by Postiz is
 // the Zernio account id, and the API key lives in ZERNIO_API_KEY.
-export abstract class ZernioProvider
-  extends SocialAbstract
-  implements SocialProvider
-{
-  abstract platform: string; // Zernio platform value, e.g. "twitter"
-  abstract identifier: string;
-  abstract name: string;
-  abstract maxLength(): number;
+export class ZernioProvider extends SocialAbstract implements SocialProvider {
+  // platform is the Zernio platform value, e.g. "twitter"
+  constructor(
+    public platform: string,
+    public identifier: string,
+    public name: string,
+    private max: number
+  ) {
+    super();
+  }
+
+  maxLength() {
+    return this.max;
+  }
 
   isBetweenSteps = false;
   scopes = [] as string[];
@@ -203,33 +209,18 @@ export abstract class ZernioProvider
   }
 }
 
-const zernioProvider = (
-  platform: string,
-  identifier: string,
-  name: string,
-  maxLength: number
-) =>
-  new (class extends ZernioProvider {
-    platform = platform;
-    identifier = identifier;
-    name = name;
-    maxLength() {
-      return maxLength;
-    }
-  })();
-
 // Platforms connectable through Zernio's hosted OAuth flow
 export const zernioProviders = [
-  zernioProvider('instagram', 'zernio-instagram', 'Instagram (Zernio)', 2200),
-  zernioProvider('facebook', 'zernio-facebook', 'Facebook (Zernio)', 63206),
-  zernioProvider('tiktok', 'zernio-tiktok', 'TikTok (Zernio)', 2200),
-  zernioProvider('twitter', 'zernio-x', 'X (Zernio)', 280),
-  zernioProvider('linkedin', 'zernio-linkedin', 'LinkedIn (Zernio)', 3000),
-  zernioProvider('youtube', 'zernio-youtube', 'YouTube (Zernio)', 5000),
-  zernioProvider('threads', 'zernio-threads', 'Threads (Zernio)', 500),
-  zernioProvider('pinterest', 'zernio-pinterest', 'Pinterest (Zernio)', 500),
-  zernioProvider('reddit', 'zernio-reddit', 'Reddit (Zernio)', 40000),
-  zernioProvider(
+  new ZernioProvider('instagram', 'zernio-instagram', 'Instagram (Zernio)', 2200),
+  new ZernioProvider('facebook', 'zernio-facebook', 'Facebook (Zernio)', 63206),
+  new ZernioProvider('tiktok', 'zernio-tiktok', 'TikTok (Zernio)', 2200),
+  new ZernioProvider('twitter', 'zernio-x', 'X (Zernio)', 280),
+  new ZernioProvider('linkedin', 'zernio-linkedin', 'LinkedIn (Zernio)', 3000),
+  new ZernioProvider('youtube', 'zernio-youtube', 'YouTube (Zernio)', 5000),
+  new ZernioProvider('threads', 'zernio-threads', 'Threads (Zernio)', 500),
+  new ZernioProvider('pinterest', 'zernio-pinterest', 'Pinterest (Zernio)', 500),
+  new ZernioProvider('reddit', 'zernio-reddit', 'Reddit (Zernio)', 40000),
+  new ZernioProvider(
     'googlebusiness',
     'zernio-gmb',
     'Google Business (Zernio)',
