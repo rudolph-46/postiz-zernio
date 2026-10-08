@@ -40,6 +40,7 @@ import SkoolProvider from '@gitroom/frontend/components/new-launch/providers/sko
 import WhopProvider from '@gitroom/frontend/components/new-launch/providers/whop/whop.provider';
 import MeweProvider from '@gitroom/frontend/components/new-launch/providers/mewe/mewe.provider';
 import TumblrProvider from '@gitroom/frontend/components/new-launch/providers/tumblr/tumblr.provider';
+import { zernioProvider } from '@gitroom/frontend/components/new-launch/providers/zernio/zernio.provider';
 
 export const Providers = [
   {
@@ -181,6 +182,46 @@ export const Providers = [
   {
     identifier: 'tumblr',
     component: TumblrProvider,
+  },
+  {
+    identifier: 'zernio-instagram',
+    component: zernioProvider(2200),
+  },
+  {
+    identifier: 'zernio-facebook',
+    component: zernioProvider(63206),
+  },
+  {
+    identifier: 'zernio-tiktok',
+    component: zernioProvider(2200),
+  },
+  {
+    identifier: 'zernio-x',
+    component: zernioProvider(280),
+  },
+  {
+    identifier: 'zernio-linkedin',
+    component: zernioProvider(3000),
+  },
+  {
+    identifier: 'zernio-youtube',
+    component: zernioProvider(5000),
+  },
+  {
+    identifier: 'zernio-threads',
+    component: zernioProvider(500),
+  },
+  {
+    identifier: 'zernio-pinterest',
+    component: zernioProvider(500),
+  },
+  {
+    identifier: 'zernio-reddit',
+    component: zernioProvider(40000),
+  },
+  {
+    identifier: 'zernio-gmb',
+    component: zernioProvider(1500),
   },
 ];
 export const ShowAllProviders = forwardRef((props, ref) => {

@@ -81,6 +81,15 @@ export const ContinueIntegration: FC<{
       };
     }
 
+    if (provider.startsWith('zernio-')) {
+      // Zernio redirects back with the connected account id as `accountId`
+      return {
+        state: searchParams.state || '',
+        code: searchParams.accountId || '',
+        refresh: searchParams.refresh || '',
+      };
+    }
+
     if (provider === 'vk') {
       return {
         ...searchParams,
