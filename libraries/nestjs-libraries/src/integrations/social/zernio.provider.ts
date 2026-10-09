@@ -190,9 +190,9 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
       }));
     };
 
-    // Zernio reports no trend of its own for these series: chart them left to
-    // right and read the change out of the series, newest half against the
-    // older half, so the analytics card has a real percentage to show.
+    // The analytics card wants a trend next to each series. Zernio returns bare
+    // counters for the post metrics, so those are read out of the series it
+    // draws: the newest half of the window against the older half.
     const withTrend = (
       label: string,
       data: { total: string; date: string }[]
@@ -202,28 +202,41 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
       const sum = (rows: { total: string }[]) =>
         rows.reduce((total, row) => total + Number(row.total || 0), 0);
 
-      let percentageChange = 0;
-      if (half) {
-        const before = sum(ordered.slice(0, half));
-        const after = sum(ordered.slice(ordered.length - half));
-        percentageChange = before
-          ? Number((((after - before) / before) * 100).toFixed(1))
-          : after
-          ? 100
-          : 0;
-      }
+      // A series with no older half has no baseline to compare against
+      const before = half ? sum(ordered.slice(0, half)) : 0;
+      const after = half ? sum(ordered.slice(ordered.length - half)) : 0;
 
-      return { label, percentageChange, data: ordered };
+      return {
+        label,
+        percentageChange: before
+          ? Number((((after - before) / before) * 100).toFixed(1))
+          : 0,
+        data: ordered,
+      };
     };
 
+    const followerSeries = withTrend(
+      'Followers',
+      (followers?.stats?.[id] || []).map((point: any) => ({
+        total: String(point.followers ?? point.count ?? 0),
+        date: dayjs(point.date).format('YYYY-MM-DD'),
+      }))
+    );
+
+    // Zernio does keep the follower growth for the window it was asked for, so
+    // the follower card reports its figure rather than a computed one
+    const growth = (followers?.accounts || []).find(
+      (account: any) => account._id === id
+    )?.growthPercentage;
+
     return [
-      withTrend(
-        'Followers',
-        (followers?.stats?.[id] || []).map((point: any) => ({
-          total: String(point.followers ?? point.count ?? 0),
-          date: dayjs(point.date).format('YYYY-MM-DD'),
-        }))
-      ),
+      {
+        ...followerSeries,
+        percentageChange:
+          typeof growth === 'number'
+            ? Number(growth.toFixed(1))
+            : followerSeries.percentageChange,
+      },
       ...['impressions', 'reach', 'likes', 'comments', 'shares'].map((metric) =>
         withTrend(
           metric.charAt(0).toUpperCase() + metric.slice(1),
@@ -300,10 +313,12 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
     postDetails: PostDetails[],
     integration: Integration
   ): Promise<PostResponse[]> {
+    if (!postDetails.length) {
+      return [];
+    }
+
     const [commentPost] = postDetails;
-    const attachment = commentPost.media?.find(
-      (media) => media.type === 'image'
-    );
+    const attachment = commentPost.media?.[0];
 
     const { data } = await (
       await this.fetch(`${ZERNIO_API}/inbox/comments/${postId}`, {
@@ -320,10 +335,21 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
       })
     ).json();
 
+    // Without the new comment id the next reply would be sent as an answer to
+    // the post itself, so the thread would silently collapse into one level
+    if (!data?.commentId) {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(data),
+        {} as any,
+        'Zernio did not return the id of the comment it created'
+      );
+    }
+
     return [
       {
         id: commentPost.id,
-        postId: data?.commentId || postId,
+        postId: data.commentId,
         releaseURL: '',
         status: 'completed',
       },
