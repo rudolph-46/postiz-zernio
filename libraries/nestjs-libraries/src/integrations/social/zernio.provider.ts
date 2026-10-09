@@ -24,7 +24,10 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
     public platform: string,
     public identifier: string,
     public name: string,
-    private max: number
+    private max: number,
+    // Zernio attaches media to a comment on Facebook only, and rejects the
+    // request everywhere else, so the platforms that take one say so here
+    private commentAttachment = false
   ) {
     super();
   }
@@ -187,21 +190,45 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
       }));
     };
 
+    // Zernio reports no trend of its own for these series: chart them left to
+    // right and read the change out of the series, newest half against the
+    // older half, so the analytics card has a real percentage to show.
+    const withTrend = (
+      label: string,
+      data: { total: string; date: string }[]
+    ) => {
+      const ordered = [...data].sort((a, b) => a.date.localeCompare(b.date));
+      const half = Math.floor(ordered.length / 2);
+      const sum = (rows: { total: string }[]) =>
+        rows.reduce((total, row) => total + Number(row.total || 0), 0);
+
+      let percentageChange = 0;
+      if (half) {
+        const before = sum(ordered.slice(0, half));
+        const after = sum(ordered.slice(ordered.length - half));
+        percentageChange = before
+          ? Number((((after - before) / before) * 100).toFixed(1))
+          : after
+          ? 100
+          : 0;
+      }
+
+      return { label, percentageChange, data: ordered };
+    };
+
     return [
-      {
-        label: 'Followers',
-        percentageChange: 0,
-        data: (followers?.stats?.[id] || []).map((point: any) => ({
+      withTrend(
+        'Followers',
+        (followers?.stats?.[id] || []).map((point: any) => ({
           total: String(point.followers ?? point.count ?? 0),
           date: dayjs(point.date).format('YYYY-MM-DD'),
-        })),
-      },
-      ...['impressions', 'reach', 'likes', 'comments', 'shares'].map(
-        (metric) => ({
-          label: metric.charAt(0).toUpperCase() + metric.slice(1),
-          percentageChange: 0,
-          data: perDay(metric),
-        })
+        }))
+      ),
+      ...['impressions', 'reach', 'likes', 'comments', 'shares'].map((metric) =>
+        withTrend(
+          metric.charAt(0).toUpperCase() + metric.slice(1),
+          perDay(metric)
+        )
       ),
     ];
   }
@@ -212,7 +239,7 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
     postDetails: PostDetails[],
     integration: Integration
   ): Promise<PostResponse[]> {
-    const [first, ...comments] = postDetails;
+    const [first] = postDetails;
 
     // Postiz calls post() at the scheduled time, so Zernio publishes right away
     const response = await this.fetch(`${ZERNIO_API}/posts`, {
@@ -262,6 +289,46 @@ export class ZernioProvider extends SocialAbstract implements SocialProvider {
       },
     ];
   }
+
+  // Postiz calls comment() for the replies of a post, once per reply, so the
+  // first one answers the post and the next ones answer the previous reply
+  async comment(
+    id: string,
+    postId: string,
+    lastCommentId: string | undefined,
+    accessToken: string,
+    postDetails: PostDetails[],
+    integration: Integration
+  ): Promise<PostResponse[]> {
+    const [commentPost] = postDetails;
+    const attachment = commentPost.media?.find(
+      (media) => media.type === 'image'
+    );
+
+    const { data } = await (
+      await this.fetch(`${ZERNIO_API}/inbox/comments/${postId}`, {
+        method: 'POST',
+        headers: { ...this.headers(), 'Idempotency-Key': commentPost.id },
+        body: JSON.stringify({
+          accountId: accessToken,
+          message: commentPost.message,
+          ...(lastCommentId ? { commentId: lastCommentId } : {}),
+          ...(this.commentAttachment && attachment
+            ? { attachmentUrl: attachment.path }
+            : {}),
+        }),
+      })
+    ).json();
+
+    return [
+      {
+        id: commentPost.id,
+        postId: data?.commentId || postId,
+        releaseURL: '',
+        status: 'completed',
+      },
+    ];
+  }
 }
 
 // Platforms connectable through Zernio's hosted OAuth flow
@@ -272,7 +339,14 @@ export const zernioProviders = [
     'Instagram (Zernio)',
     2200
   ),
-  new ZernioProvider('facebook', 'zernio-facebook', 'Facebook (Zernio)', 63206),
+  // Facebook is the only Zernio platform that takes media on a comment
+  new ZernioProvider(
+    'facebook',
+    'zernio-facebook',
+    'Facebook (Zernio)',
+    63206,
+    true
+  ),
   new ZernioProvider('tiktok', 'zernio-tiktok', 'TikTok (Zernio)', 2200),
   new ZernioProvider('twitter', 'zernio-x', 'X (Zernio)', 280),
   new ZernioProvider('linkedin', 'zernio-linkedin', 'LinkedIn (Zernio)', 3000),

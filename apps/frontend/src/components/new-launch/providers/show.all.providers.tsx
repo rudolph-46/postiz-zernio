@@ -189,7 +189,7 @@ export const Providers = [
   },
   {
     identifier: 'zernio-facebook',
-    component: zernioProvider(63206),
+    component: zernioProvider(63206, true),
   },
   {
     identifier: 'zernio-tiktok',
